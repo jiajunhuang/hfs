@@ -33,7 +33,7 @@ func Remove(path string) error {
 
 // Append read bytes from r, append it to given file in path
 func Append(path string, r io.Reader) error {
-	f, err := os.Open(path)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		return err
 	}
