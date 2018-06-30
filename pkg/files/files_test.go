@@ -48,11 +48,10 @@ func TestRemove(t *testing.T) {
 }
 
 func TestAppend(t *testing.T) {
-	t.SkipNow()
-
 	// if file not exist
 	path := "./world"
 	data := "hello"
+	defer os.Remove(path)
 
 	Append(path, strings.NewReader(data))
 
@@ -60,6 +59,16 @@ func TestAppend(t *testing.T) {
 		t.Fatalf("should read file %s success but got error: %s", path, err)
 	} else {
 		if string(b) != data {
+			t.Fatalf("bytes from file %s(%s) not equal to content %s", path, b, data)
+		}
+	}
+
+	// append
+	Append(path, strings.NewReader("world"))
+	if b, err := ioutil.ReadFile(path); err != nil {
+		t.Fatalf("should read file %s success but got error: %s", path, err)
+	} else {
+		if string(b) != "helloworld" {
 			t.Fatalf("bytes from file %s(%s) not equal to content %s", path, b, data)
 		}
 	}

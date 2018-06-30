@@ -20,7 +20,7 @@ func Create(path string) (*os.File, error) {
 	paths := strings.Split(path, "/")
 
 	dirPath := strings.Join(paths[:len(paths)-1], "/")
-	os.MkdirAll(dirPath, 0777)
+	os.MkdirAll(dirPath, 0700)
 
 	logger.Sugar.Debugf("create file: %s", path)
 	return os.Create(path)
@@ -36,7 +36,7 @@ func Remove(path string) error {
 func Append(path string, r io.Reader) error {
 	logger.Sugar.Debugf("append file: %s", path)
 
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0700)
 	if err != nil {
 		return err
 	}
@@ -48,20 +48,14 @@ func Append(path string, r io.Reader) error {
 	for {
 		n, err := r.Read(buf)
 		if err == io.EOF {
-			return nil
-		} else if err == nil {
-			logger.Sugar.Infof("n = %d, err: %s", n, err)
-			nw, e := f.Write(buf[:n])
-			if e != nil {
-				return e
-			}
-
-			if nw != n {
-				logger.Sugar.Infof("failed write %x, read %d bytes, write %d bytes", buf, n, nw)
-				return ErrWriteFailed
-			}
-		} else {
-			return err
+			break
+		}
+		nw, e := f.Write(buf[:n])
+		logger.Sugar.Infof("n = %d, nw = %d, err: %s", n, nw, err)
+		if e != nil {
+			return e
 		}
 	}
+
+	return nil
 }
