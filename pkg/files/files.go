@@ -51,7 +51,7 @@ func Append(path string, r io.Reader) error {
 			break
 		}
 		nw, e := f.Write(buf[:n])
-		logger.Sugar.Infof("n = %d, nw = %d, err: %s", n, nw, err)
+		logger.Sugar.Debugf("Append: read %d bytes, write %d bytes, read err: %s, write err: %s", n, nw, err, e)
 		if e != nil {
 			return e
 		}
