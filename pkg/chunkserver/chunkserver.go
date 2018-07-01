@@ -8,6 +8,26 @@ import (
 	"github.com/jiajunhuang/hfs/pkg/logger"
 )
 
+func StartWorker(name, ip string, etcdClient *clientv3.Client) {
+	kvClient := clientv3.NewKV(etcdClient)
+
+	for {
+		lease := clientv3.NewLease(etcdClient)
+		grantResp, err := lease.Grant(context.TODO(), 10)
+		if err != nil {
+			logger.Sugar.Errorf("failed to grant lease: %s", err)
+			continue
+		}
+		_, err = kvClient.Put(context.Background(), "/workers/"+ip, name, clientv3.WithLease(grantResp.ID))
+		if err != nil {
+			logger.Sugar.Errorf("failed to put %s to %s: %s", ip, name, err)
+		} else {
+			logger.Sugar.Infof("refresh ip %s to worker %s in KV %+v", ip, name, kvClient)
+		}
+		time.Sleep(time.Second * 3)
+	}
+}
+
 // StartChunkServer works as it's name
 func StartChunkServer() {
 	etcdClient, err := clientv3.New(
@@ -23,10 +43,5 @@ func StartChunkServer() {
 
 	defer etcdClient.Close()
 
-	kvClient := clientv3.NewKV(etcdClient)
-	resp, err := kvClient.Get(context.Background(), "foo")
-	if err != nil {
-		logger.Sugar.Errorf("failed to get %s: %s", "foo", err)
-	}
-	logger.Sugar.Infof("resp: %+v", resp)
+	StartWorker("idea", "127.0.0.1", etcdClient)
 }
