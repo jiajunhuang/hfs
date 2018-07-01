@@ -13,4 +13,4 @@ test:
 	go test -race -cover ./...
 
 build:
-	go build
+	go build -o bin/chunkserver cmd/chunkserver/main.go
