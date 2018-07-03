@@ -7,6 +7,7 @@ message Chunk {
     int64 size = 2; // chunk size
     int64 used = 3; // size in bytes real used
     repeated string replicas = 4; // all the locations of itself
+    string FileUUID = 5; // which file does this chunk belongs to
 }
 
 message File {
