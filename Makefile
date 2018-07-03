@@ -1,6 +1,6 @@
 .PHONY: all
 
-all: fmt vet test build
+all: protogen fmt vet test build
 	echo "success"
 
 fmt:
@@ -14,3 +14,6 @@ test:
 
 build:
 	go build -o bin/chunkserver cmd/chunkserver/main.go
+
+protogen:
+	protoc -I pb pb/**/*.proto --go_out=plugins=grpc:pb

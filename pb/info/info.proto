@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package info;
+
+message Chunk {
+    string UUID = 1; // chunk uuid
+    int64 size = 2; // chunk size
+    int64 used = 3; // size in bytes real used
+    repeated string replicas = 4; // all the locations of itself
+}
+
+message File {
+    string UUID = 1; // file uuid
+    string file_name = 2;
+    int64 size = 3; // file size
+    int32 replica_num = 4; // how many replica do this file have
+    int64 created_at = 5;
+    int64 updated_at = 6;
+    repeated Chunk chunks = 7;
+}
