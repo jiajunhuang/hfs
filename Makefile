@@ -16,4 +16,4 @@ build:
 	go build -o bin/chunkserver cmd/chunkserver/main.go
 
 protogen:
-	protoc -I pb pb/**/*.proto --go_out=plugins=grpc:pb
+	protoc -I pb pb/service.proto --go_out=plugins=grpc:pb
