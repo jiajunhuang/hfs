@@ -11,6 +11,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/google/uuid"
 	"github.com/jiajunhuang/hfs/pb"
+	"github.com/jiajunhuang/hfs/pkg/config"
 	"github.com/jiajunhuang/hfs/pkg/files"
 	"github.com/jiajunhuang/hfs/pkg/logger"
 	"github.com/jiajunhuang/hfs/pkg/utils"
@@ -54,11 +55,11 @@ func (s *ChunkServer) CreateFile(stream pb.ChunkServer_CreateFileServer) error {
 			UUID:     uuid.New().String(),
 			Size:     dataSize, // for now
 			Used:     dataSize,
-			Replicas: []string{"192.168.1.1"},
+			Replicas: []string{s.name},
 			FileUUID: file.UUID,
 		}
 
-		chunkPath := "/hfs/chunks/" + c.UUID
+		chunkPath := config.ChunkBasePath + c.UUID
 		if err := files.Append(chunkPath, bytes.NewReader(fileChunkData.Data)); err != nil {
 			logger.Sugar.Errorf("failed to write data into chunk %s", c.UUID)
 			return ErrFailedWrite
@@ -85,7 +86,7 @@ func (s *ChunkServer) CreateFile(stream pb.ChunkServer_CreateFileServer) error {
 		logger.Sugar.Errorf("failed to sync metadata of file %s", file.UUID)
 		return ErrFailedWriteMeta
 	}
-	filePath := "/hfs/files/" + file.UUID
+	filePath := config.FileBasePath + file.UUID
 	_, err = kvClient.Put(context.Background(), filePath, v)
 	if err != nil {
 		logger.Sugar.Errorf("failed to sync metadata of chunk %s", file.UUID)
@@ -112,11 +113,11 @@ func (s *ChunkServer) KeepAlive() {
 			logger.Sugar.Errorf("failed to grant lease: %s", err)
 			continue
 		}
-		_, err = kvClient.Put(context.Background(), "/workers/"+s.ip, s.name, clientv3.WithLease(grantResp.ID))
+		_, err = kvClient.Put(context.Background(), config.WorkerBasePath+s.name, s.ip, clientv3.WithLease(grantResp.ID))
 		if err != nil {
-			logger.Sugar.Errorf("failed to put %s to %s: %s", s.ip, s.name, err)
+			logger.Sugar.Errorf("failed to put %s to %s: %s", s.name, s.ip, err)
 		} else {
-			logger.Sugar.Infof("refresh ip %s to worker %s in KV %+v", s.ip, s.name, kvClient)
+			logger.Sugar.Infof("refresh ip %s to worker %s in KV %+v", s.name, s.ip, kvClient)
 		}
 		time.Sleep(time.Second * 3)
 	}
@@ -126,7 +127,7 @@ func (s *ChunkServer) KeepAlive() {
 func StartChunkServer() {
 	etcdClient, err := clientv3.New(
 		clientv3.Config{
-			Endpoints:   []string{"127.0.0.1:2379"},
+			Endpoints:   config.EtcdEndpoints,
 			DialTimeout: 2 * time.Second,
 		},
 	)
@@ -137,18 +138,17 @@ func StartChunkServer() {
 
 	defer etcdClient.Close()
 
-	chunkServer := ChunkServer{"idea", "127.0.0.1", etcdClient}
+	chunkServer := ChunkServer{config.ChunkServerName, config.ChunkServerIPAddr, etcdClient}
 	go chunkServer.KeepAlive()
 
 	// grpc server
-	addr := "127.0.0.1:8899"
-	lis, err := net.Listen("tcp", addr)
+	lis, err := net.Listen("tcp", config.GRPCAddr)
 	if err != nil {
 		logger.Sugar.Fatalf("failed to listen: %s", err)
 	}
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterChunkServerServer(grpcServer, &chunkServer)
-	logger.Sugar.Infof("listen at %s", addr)
+	logger.Sugar.Infof("listen at %s", config.GRPCAddr)
 	grpcServer.Serve(lis)
 }
