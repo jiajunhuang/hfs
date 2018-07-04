@@ -37,6 +37,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/google/uuid"
+  packages = ["."]
+  revision = "064e2069ce9c359c118179501254f67d7d37ba24"
+  version = "0.2"
+
+[[projects]]
   name = "go.uber.org/atomic"
   packages = ["."]
   revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
@@ -144,6 +150,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "10f2a37b2e97c8a231aca5e93503248fa01377f8762c8050ea0bca6bc2237127"
+  inputs-digest = "46e81727cff939f0fe99c7a1c15dda5f15a3ca4037f170a32dd710bc900a5ef9"
   solver-name = "gps-cdcl"
   solver-version = 1
