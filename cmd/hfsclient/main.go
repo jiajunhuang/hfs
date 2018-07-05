@@ -60,6 +60,23 @@ func main() {
 				return nil
 			},
 		},
+		{
+			Name:  "delete",
+			Usage: "delete file",
+			Action: func(c *cli.Context) error {
+				fileUUID := c.Args().First()
+				if fileUUID == "" {
+					fmt.Printf("Usage: $ hfsclient download <fileuuid>\n")
+					return nil
+				}
+
+				if err := hfsclient.Delete(grpcClient, fileUUID); err != nil {
+					fmt.Printf("failed to download: %s\n", err)
+				}
+
+				return nil
+			},
+		},
 	}
 
 	err = app.Run(os.Args)

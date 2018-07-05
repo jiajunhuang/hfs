@@ -38,7 +38,7 @@ func (m *Chunk) Reset()         { *m = Chunk{} }
 func (m *Chunk) String() string { return proto.CompactTextString(m) }
 func (*Chunk) ProtoMessage()    {}
 func (*Chunk) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_ce8b2548e670faaa, []int{0}
+	return fileDescriptor_service_b7cdeaca6f0c3dc4, []int{0}
 }
 func (m *Chunk) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Chunk.Unmarshal(m, b)
@@ -110,7 +110,7 @@ func (m *File) Reset()         { *m = File{} }
 func (m *File) String() string { return proto.CompactTextString(m) }
 func (*File) ProtoMessage()    {}
 func (*File) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_ce8b2548e670faaa, []int{1}
+	return fileDescriptor_service_b7cdeaca6f0c3dc4, []int{1}
 }
 func (m *File) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_File.Unmarshal(m, b)
@@ -191,7 +191,7 @@ func (m *FileChunkData) Reset()         { *m = FileChunkData{} }
 func (m *FileChunkData) String() string { return proto.CompactTextString(m) }
 func (*FileChunkData) ProtoMessage()    {}
 func (*FileChunkData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_ce8b2548e670faaa, []int{2}
+	return fileDescriptor_service_b7cdeaca6f0c3dc4, []int{2}
 }
 func (m *FileChunkData) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FileChunkData.Unmarshal(m, b)
@@ -236,7 +236,7 @@ func (m *ReadFileRequest) Reset()         { *m = ReadFileRequest{} }
 func (m *ReadFileRequest) String() string { return proto.CompactTextString(m) }
 func (*ReadFileRequest) ProtoMessage()    {}
 func (*ReadFileRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_ce8b2548e670faaa, []int{3}
+	return fileDescriptor_service_b7cdeaca6f0c3dc4, []int{3}
 }
 func (m *ReadFileRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReadFileRequest.Unmarshal(m, b)
@@ -265,7 +265,7 @@ func (m *ReadFileRequest) GetFileUUID() string {
 
 type GenericResponse struct {
 	Code                 int64    `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
-	Msg                  int64    `protobuf:"varint,2,opt,name=msg,proto3" json:"msg,omitempty"`
+	Msg                  string   `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -275,7 +275,7 @@ func (m *GenericResponse) Reset()         { *m = GenericResponse{} }
 func (m *GenericResponse) String() string { return proto.CompactTextString(m) }
 func (*GenericResponse) ProtoMessage()    {}
 func (*GenericResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_ce8b2548e670faaa, []int{4}
+	return fileDescriptor_service_b7cdeaca6f0c3dc4, []int{4}
 }
 func (m *GenericResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GenericResponse.Unmarshal(m, b)
@@ -302,16 +302,16 @@ func (m *GenericResponse) GetCode() int64 {
 	return 0
 }
 
-func (m *GenericResponse) GetMsg() int64 {
+func (m *GenericResponse) GetMsg() string {
 	if m != nil {
 		return m.Msg
 	}
-	return 0
+	return ""
 }
 
 type CreateFileResponse struct {
 	Code                 int64    `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
-	Msg                  int64    `protobuf:"varint,2,opt,name=msg,proto3" json:"msg,omitempty"`
+	Msg                  string   `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
 	File                 *File    `protobuf:"bytes,3,opt,name=file,proto3" json:"file,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -322,7 +322,7 @@ func (m *CreateFileResponse) Reset()         { *m = CreateFileResponse{} }
 func (m *CreateFileResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateFileResponse) ProtoMessage()    {}
 func (*CreateFileResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_service_ce8b2548e670faaa, []int{5}
+	return fileDescriptor_service_b7cdeaca6f0c3dc4, []int{5}
 }
 func (m *CreateFileResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateFileResponse.Unmarshal(m, b)
@@ -349,11 +349,11 @@ func (m *CreateFileResponse) GetCode() int64 {
 	return 0
 }
 
-func (m *CreateFileResponse) GetMsg() int64 {
+func (m *CreateFileResponse) GetMsg() string {
 	if m != nil {
 		return m.Msg
 	}
-	return 0
+	return ""
 }
 
 func (m *CreateFileResponse) GetFile() *File {
@@ -639,9 +639,9 @@ var _ChunkServer_serviceDesc = grpc.ServiceDesc{
 	Metadata: "service.proto",
 }
 
-func init() { proto.RegisterFile("service.proto", fileDescriptor_service_ce8b2548e670faaa) }
+func init() { proto.RegisterFile("service.proto", fileDescriptor_service_b7cdeaca6f0c3dc4) }
 
-var fileDescriptor_service_ce8b2548e670faaa = []byte{
+var fileDescriptor_service_b7cdeaca6f0c3dc4 = []byte{
 	// 433 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x53, 0x5d, 0x8b, 0xd3, 0x40,
 	0x14, 0xed, 0xec, 0xa4, 0xb5, 0xb9, 0x71, 0x59, 0x1d, 0x41, 0x42, 0x54, 0x8c, 0xf3, 0x94, 0x97,
@@ -662,13 +662,13 @@ var fileDescriptor_service_ce8b2548e670faaa = []byte{
 	0xd3, 0xde, 0x66, 0xa1, 0x9d, 0xa6, 0xbb, 0x6e, 0x2b, 0xc2, 0xff, 0xbd, 0x4b, 0x9e, 0xc2, 0x89,
 	0x42, 0x5d, 0xf8, 0x2d, 0x0a, 0xbf, 0x76, 0x68, 0xdd, 0x5f, 0x01, 0xb2, 0x83, 0x00, 0x5f, 0xc0,
 	0xc9, 0x5b, 0xac, 0xb1, 0x2d, 0x73, 0x85, 0xd6, 0x34, 0xb5, 0xa5, 0x64, 0xf2, 0xa6, 0x40, 0x6a,
-	0xe5, 0x8a, 0xb0, 0xb8, 0x03, 0xbc, 0xb2, 0x9f, 0x86, 0xcf, 0xe8, 0xa1, 0xfc, 0x00, 0xe2, 0x8c,
-	0x0e, 0xef, 0x95, 0x6e, 0x32, 0x2b, 0x1e, 0x42, 0xe0, 0xfd, 0x52, 0xf6, 0xd1, 0x72, 0xee, 0x63,
-	0xa0, 0x2d, 0xc4, 0x2e, 0x7f, 0x32, 0x88, 0x28, 0x80, 0xf7, 0xd8, 0xee, 0xb0, 0x15, 0xaf, 0x00,
-	0x7e, 0x2b, 0x89, 0xbb, 0xfb, 0xee, 0x31, 0xa3, 0xe4, 0x3e, 0xe5, 0x78, 0xc5, 0x8c, 0x9c, 0x64,
-	0x4c, 0x9c, 0x02, 0x28, 0xac, 0x9a, 0x5d, 0x3f, 0x3c, 0x4a, 0x25, 0xf7, 0x3c, 0x3a, 0xb8, 0x5c,
-	0x4e, 0xc4, 0x4b, 0x80, 0x95, 0x31, 0x58, 0x17, 0xff, 0xd2, 0xba, 0x7e, 0x2e, 0x63, 0xe2, 0x39,
-	0xcc, 0xf7, 0xb9, 0x0b, 0x6a, 0x3a, 0xf8, 0x0a, 0xc9, 0xd5, 0x65, 0x72, 0xf2, 0x94, 0x6d, 0x66,
-	0xf4, 0x27, 0x3d, 0xfb, 0x15, 0x00, 0x00, 0xff, 0xff, 0x73, 0xa4, 0xf8, 0xfb, 0x5a, 0x03, 0x00,
+	0xe5, 0x8a, 0xb0, 0xb8, 0x03, 0xbc, 0xb2, 0x9f, 0x06, 0x31, 0x0f, 0xe5, 0x07, 0x10, 0x67, 0x74,
+	0x78, 0xaf, 0x74, 0x93, 0x59, 0xf1, 0x10, 0x02, 0xef, 0x97, 0xb2, 0x8f, 0x96, 0x73, 0x1f, 0x03,
+	0x6d, 0x21, 0x76, 0xf9, 0x93, 0x41, 0x44, 0x01, 0xbc, 0xc7, 0x76, 0x87, 0xad, 0x78, 0x05, 0xf0,
+	0x5b, 0x49, 0xdc, 0xdd, 0x77, 0x8f, 0x19, 0x25, 0xf7, 0x29, 0xc7, 0x2b, 0x66, 0xe4, 0x24, 0x63,
+	0xe2, 0x14, 0x40, 0x61, 0xd5, 0xec, 0xfa, 0xe1, 0x51, 0x2a, 0xb9, 0xe7, 0xd1, 0xc1, 0xe5, 0x72,
+	0x22, 0x5e, 0x02, 0xac, 0x8c, 0xc1, 0xba, 0xf8, 0x97, 0xd6, 0xf5, 0x73, 0x19, 0x13, 0xcf, 0x61,
+	0xbe, 0xcf, 0x5d, 0x50, 0xd3, 0xc1, 0x57, 0x48, 0xae, 0x2e, 0x93, 0x93, 0xa7, 0x6c, 0x33, 0xa3,
+	0x3f, 0xe9, 0xd9, 0xaf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x01, 0x7e, 0x01, 0xc5, 0x5a, 0x03, 0x00,
 	0x00,
 }

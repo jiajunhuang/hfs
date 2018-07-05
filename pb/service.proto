@@ -31,12 +31,12 @@ message ReadFileRequest {
 
 message GenericResponse {
     int64 code = 1;
-    int64 msg = 2;
+    string msg = 2;
 }
 
 message CreateFileResponse {
     int64 code = 1;
-    int64 msg = 2;
+    string msg = 2;
     File file = 3;
 }
 

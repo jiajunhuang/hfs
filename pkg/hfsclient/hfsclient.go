@@ -81,3 +81,13 @@ func Download(client pb.ChunkServerClient, fileUUID string) error {
 
 	return nil
 }
+
+func Delete(client pb.ChunkServerClient, fileUUID string) error {
+	file := pb.File{UUID: fileUUID}
+	if _, err := client.RemoveFile(context.Background(), &file); err != nil {
+		fmt.Printf("failed to delete file %s: %s\n", file.UUID, err)
+		return err
+	}
+
+	return nil
+}

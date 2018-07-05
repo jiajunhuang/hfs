@@ -105,7 +105,42 @@ func (s *ChunkServer) CreateFile(stream pb.ChunkServer_CreateFileServer) error {
 }
 
 func (s *ChunkServer) RemoveFile(ctx context.Context, file *pb.File) (*pb.GenericResponse, error) {
-	return nil, nil
+	kvClient := clientv3.NewKV(s.etcdClient)
+	filePath := config.FileBasePath + file.UUID
+
+	resp, err := kvClient.Get(context.Background(), filePath)
+	if err != nil {
+		logger.Sugar.Errorf("failed to get metadata of file %s", filePath)
+		return nil, ErrFailedGetFile
+	}
+
+	if resp.Count == 0 {
+		return nil, ErrFileNotExist
+	} else if resp.Count != 1 {
+		logger.Sugar.Errorf("bad metadata of file %s: %+v", filePath, resp)
+		return nil, ErrFailedGetFile
+	}
+
+	if err := json.Unmarshal(resp.Kvs[0].Value, &file); err != nil {
+		return nil, err
+	}
+	chunks := file.Chunks
+
+	for _, c := range chunks {
+		chunkPath := config.ChunkBasePath + c.UUID
+		if err := files.Remove(chunkPath); err != nil {
+			logger.Sugar.Errorf("failed to remove chunk %s: %s", c.UUID, err)
+		}
+		if _, err := kvClient.Delete(context.Background(), chunkPath); err != nil {
+			logger.Sugar.Errorf("failed to delete metadata of chunk %s: %s", c.UUID, err)
+		}
+	}
+
+	if _, err := kvClient.Delete(context.Background(), config.FileBasePath+file.UUID); err != nil {
+		logger.Sugar.Errorf("failed to delete metadata of file %s: %s", file.UUID, err)
+	}
+
+	return &pb.GenericResponse{Code: 0, Msg: "success"}, nil
 }
 
 func (s *ChunkServer) AppendFile(stream pb.ChunkServer_AppendFileServer) error {
@@ -116,7 +151,6 @@ func (s *ChunkServer) ReadFile(req *pb.ReadFileRequest, stream pb.ChunkServer_Re
 	kvClient := clientv3.NewKV(s.etcdClient)
 	filePath := config.FileBasePath + req.FileUUID
 
-	// TODO: resp should be used
 	resp, err := kvClient.Get(context.Background(), filePath)
 	if err != nil {
 		logger.Sugar.Errorf("failed to get metadata of file %s", filePath)
