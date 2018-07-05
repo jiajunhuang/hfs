@@ -14,6 +14,7 @@ test:
 
 build:
 	go build -o bin/chunkserver cmd/chunkserver/main.go
+	go build -o bin/hfsclient cmd/hfsclient/main.go
 
 protogen:
 	protoc -I pb pb/service.proto --go_out=plugins=grpc:pb

@@ -10,6 +10,8 @@ var (
 	GRPCAddr          = "127.0.0.1:8899"
 	ChunkServerName   = "hfs-chunk"
 	ChunkServerIPAddr = "127.0.0.1"
+	ChunkSize         = 1024 * 1024 * 64 // 64M
+	GRPCMaxMsgSize    = ChunkSize + 4096 // 64M + 4K
 
 	EtcdEndpoints = []string{"127.0.0.1:2379"}
 

@@ -3,9 +3,11 @@ package chunkserver
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
+	"os"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
@@ -21,6 +23,8 @@ import (
 var (
 	ErrFailedWrite     = errors.New("failed to write")
 	ErrFailedWriteMeta = errors.New("failed to sync metadata")
+	ErrFailedGetFile   = errors.New("failed to get file")
+	ErrFileNotExist    = errors.New("file not exist")
 )
 
 type ChunkServer struct {
@@ -35,8 +39,8 @@ func (s *ChunkServer) CreateFile(stream pb.ChunkServer_CreateFileServer) error {
 		// FileName
 		// Size
 		ReplicaNum: 1,
-		CreatedAt:  int64(time.Now().Second()),
-		UpdatedAt:  int64(time.Now().Second()),
+		CreatedAt:  time.Now().Unix(),
+		UpdatedAt:  time.Now().Unix(),
 		// Chunks
 	}
 	var size int64
@@ -46,6 +50,9 @@ func (s *ChunkServer) CreateFile(stream pb.ChunkServer_CreateFileServer) error {
 		fileChunkData, err := stream.Recv()
 		if err == io.EOF {
 			break
+		} else if err != nil {
+			logger.Sugar.Errorf("failed to receive chunk: %s", err)
+			return ErrFailedWrite
 		}
 		file.FileName = fileChunkData.FileName
 		dataSize := int64(len(fileChunkData.Data))
@@ -53,15 +60,17 @@ func (s *ChunkServer) CreateFile(stream pb.ChunkServer_CreateFileServer) error {
 
 		c := pb.Chunk{
 			UUID:     uuid.New().String(),
-			Size:     dataSize, // for now
+			Size:     int64(config.ChunkSize), // for now
 			Used:     dataSize,
 			Replicas: []string{s.name},
 			FileUUID: file.UUID,
 		}
 
 		chunkPath := config.ChunkBasePath + c.UUID
-		if err := files.Append(chunkPath, bytes.NewReader(fileChunkData.Data)); err != nil {
-			logger.Sugar.Errorf("failed to write data into chunk %s", c.UUID)
+		zeros := make([]byte, config.ChunkSize-len(fileChunkData.Data))
+		data := append(fileChunkData.Data, zeros...)
+		if err := files.Append(chunkPath, bytes.NewReader(data)); err != nil {
+			logger.Sugar.Errorf("failed to write data into chunk %s: %s", c.UUID, err)
 			return ErrFailedWrite
 		}
 
@@ -103,6 +112,53 @@ func (s *ChunkServer) AppendFile(stream pb.ChunkServer_AppendFileServer) error {
 	return nil
 }
 
+func (s *ChunkServer) ReadFile(req *pb.ReadFileRequest, stream pb.ChunkServer_ReadFileServer) error {
+	kvClient := clientv3.NewKV(s.etcdClient)
+	filePath := config.FileBasePath + req.FileUUID
+
+	// TODO: resp should be used
+	resp, err := kvClient.Get(context.Background(), filePath)
+	if err != nil {
+		logger.Sugar.Errorf("failed to get metadata of file %s", filePath)
+		return ErrFailedGetFile
+	}
+
+	if resp.Count == 0 {
+		return ErrFileNotExist
+	} else if resp.Count != 1 {
+		logger.Sugar.Errorf("bad metadata of file %s: %+v", filePath, resp)
+		return ErrFailedGetFile
+	}
+
+	var file pb.File
+	if err := json.Unmarshal(resp.Kvs[0].Value, &file); err != nil {
+		return err
+	}
+	chunks := file.Chunks
+
+	for i, c := range chunks {
+		// read chunk from local file system. TODO: read it from one of it's replica
+		chunkPath := config.ChunkBasePath + c.UUID
+		f, err := os.Open(chunkPath)
+		if err != nil {
+			logger.Sugar.Errorf("failed to read %dth chunk %s: %s", i, c.UUID, err)
+			return err
+		}
+
+		buf := make([]byte, config.ChunkSize)
+		for {
+			_, err := f.Read(buf)
+			if err == io.EOF {
+				break
+			}
+			// write it to stream
+			stream.Send(&pb.FileChunkData{Data: buf[:c.Used], FileName: file.FileName})
+		}
+	}
+
+	return nil
+}
+
 func (s *ChunkServer) KeepAlive() {
 	kvClient := clientv3.NewKV(s.etcdClient)
 
@@ -119,7 +175,7 @@ func (s *ChunkServer) KeepAlive() {
 		} else {
 			logger.Sugar.Infof("refresh ip %s to worker %s in KV %+v", s.name, s.ip, kvClient)
 		}
-		time.Sleep(time.Second * 3)
+		time.Sleep(time.Second * 7)
 	}
 }
 
@@ -147,7 +203,7 @@ func StartChunkServer() {
 		logger.Sugar.Fatalf("failed to listen: %s", err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.MaxRecvMsgSize(config.GRPCMaxMsgSize), grpc.MaxSendMsgSize(config.GRPCMaxMsgSize))
 	pb.RegisterChunkServerServer(grpcServer, &chunkServer)
 	logger.Sugar.Infof("listen at %s", config.GRPCAddr)
 	grpcServer.Serve(lis)

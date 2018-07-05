@@ -36,7 +36,7 @@ func Remove(path string) error {
 func Append(path string, r io.Reader) error {
 	logger.Sugar.Debugf("append file: %s", path)
 
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0700)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		return err
 	}
