@@ -101,6 +101,8 @@ func (s *ChunkServer) CreateFile(stream pb.ChunkServer_CreateFileServer) error {
 		logger.Sugar.Errorf("failed to sync metadata of chunk %s", file.UUID)
 		return ErrFailedWriteMeta
 	}
+
+	logger.Sugar.Infof("file %s created", file.UUID)
 	return stream.SendAndClose(&pb.CreateFileResponse{Code: 0, File: &file})
 }
 
@@ -140,6 +142,7 @@ func (s *ChunkServer) RemoveFile(ctx context.Context, file *pb.File) (*pb.Generi
 		logger.Sugar.Errorf("failed to delete metadata of file %s: %s", file.UUID, err)
 	}
 
+	logger.Sugar.Infof("file %s removed", file.UUID)
 	return &pb.GenericResponse{Code: 0, Msg: "success"}, nil
 }
 
@@ -190,6 +193,7 @@ func (s *ChunkServer) ReadFile(req *pb.ReadFileRequest, stream pb.ChunkServer_Re
 		}
 	}
 
+	logger.Sugar.Infof("file %s readed", req.FileUUID)
 	return nil
 }
 

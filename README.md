@@ -66,3 +66,9 @@ $ ETCDCTL_API=3 etcdctl get "" --prefix=true
 /hfs/chunks/06c520d5-9c01-438f-9760-7004decce303
 ...(ignore the rest)
 ```
+
+7. delete file:
+
+```bash
+$ ./bin/hfsclient delete 60aca0d4-28d9-481b-9a62-460f642664d0
+```
