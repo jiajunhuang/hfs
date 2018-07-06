@@ -21,8 +21,10 @@ message File {
 }
 
 message FileChunkData {
-    bytes data = 1;
-    string file_name = 2;
+    bytes data = 1; // bytes it contains
+    // msg it describe these data, may be file name, file uuid, chunk uuid, or something else.
+    //depends on what it need
+    string msg = 2;
 }
 
 message ReadFileRequest {
@@ -43,6 +45,6 @@ message CreateFileResponse {
 service ChunkServer {
     rpc CreateFile(stream FileChunkData) returns (CreateFileResponse) {}
     rpc RemoveFile(File) returns (GenericResponse) {}
-    rpc AppendFile(stream FileChunkData) returns (GenericResponse) {}
     rpc ReadFile(ReadFileRequest) returns (stream FileChunkData) {}
+    rpc CreateChunk(FileChunkData) returns (GenericResponse) {}
 }

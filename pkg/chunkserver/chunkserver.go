@@ -21,10 +21,11 @@ import (
 )
 
 var (
-	ErrFailedWrite     = errors.New("failed to write")
-	ErrFailedWriteMeta = errors.New("failed to sync metadata")
-	ErrFailedGetFile   = errors.New("failed to get file")
-	ErrFileNotExist    = errors.New("file not exist")
+	ErrFailedWrite     = errors.New("failed to write file or chunk")
+	ErrFailedWriteMeta = errors.New("failed to sync metadata of file or chunk")
+	ErrFailedGetFile   = errors.New("failed to get file or chunk")
+	ErrFileNotExist    = errors.New("file or chunk not exist")
+	ErrAlreadyExist    = errors.New("file or chunk already exist")
 )
 
 type ChunkServer struct {
@@ -54,7 +55,7 @@ func (s *ChunkServer) CreateFile(stream pb.ChunkServer_CreateFileServer) error {
 			logger.Sugar.Errorf("failed to receive chunk: %s", err)
 			return ErrFailedWrite
 		}
-		file.FileName = fileChunkData.FileName
+		file.FileName = fileChunkData.Msg
 		dataSize := int64(len(fileChunkData.Data))
 		size += dataSize
 
@@ -146,8 +147,21 @@ func (s *ChunkServer) RemoveFile(ctx context.Context, file *pb.File) (*pb.Generi
 	return &pb.GenericResponse{Code: 0, Msg: "success"}, nil
 }
 
-func (s *ChunkServer) AppendFile(stream pb.ChunkServer_AppendFileServer) error {
-	return nil
+func (s *ChunkServer) CreateChunk(ctx context.Context, file *pb.FileChunkData) (*pb.GenericResponse, error) {
+	chunkUUID := file.Msg
+	chunkPath := config.ChunkBasePath + chunkUUID
+
+	if _, err := os.Stat(chunkPath); os.IsNotExist(err) {
+		return nil, ErrFileNotExist
+	}
+
+	if err := files.Append(chunkPath, bytes.NewReader(file.Data)); err != nil {
+		logger.Sugar.Errorf("failed to create chunk %s: %s", chunkUUID, err)
+		return nil, ErrFailedWrite
+	}
+	logger.Sugar.Infof("chunk %s has been create", chunkUUID)
+
+	return &pb.GenericResponse{Code: 0, Msg: chunkUUID}, nil
 }
 
 func (s *ChunkServer) ReadFile(req *pb.ReadFileRequest, stream pb.ChunkServer_ReadFileServer) error {
@@ -189,7 +203,7 @@ func (s *ChunkServer) ReadFile(req *pb.ReadFileRequest, stream pb.ChunkServer_Re
 				break
 			}
 			// write it to stream
-			stream.Send(&pb.FileChunkData{Data: buf[:c.Used], FileName: file.FileName})
+			stream.Send(&pb.FileChunkData{Data: buf[:c.Used], Msg: file.FileName})
 		}
 	}
 
@@ -214,6 +228,16 @@ func (s *ChunkServer) KeepAlive() {
 			logger.Sugar.Infof("refresh ip %s to worker %s in KV %+v", s.name, s.ip, kvClient)
 		}
 		time.Sleep(time.Second * 7)
+	}
+}
+
+func (s *ChunkServer) ChunkWatcher() {
+	chunkChan := s.etcdClient.Watch(context.Background(), config.ChunkBasePath, clientv3.WithPrefix())
+
+	for resp := range chunkChan {
+		for _, ev := range resp.Events {
+			logger.Sugar.Infof("watcher: %s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+		}
 	}
 }
 

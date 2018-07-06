@@ -31,7 +31,7 @@ func Upload(client pb.ChunkServerClient, filePath string) error {
 		if err == io.EOF {
 			break
 		}
-		if err := stream.Send(&pb.FileChunkData{Data: buf[:n], FileName: fileName}); err != nil {
+		if err := stream.Send(&pb.FileChunkData{Data: buf[:n], Msg: fileName}); err != nil {
 			logger.Sugar.Fatalf("failed to send chunk: %s", err)
 		}
 	}
@@ -71,10 +71,10 @@ func Download(client pb.ChunkServerClient, fileUUID string) error {
 
 		_, err = f.Write(chunk.Data)
 		if err != nil {
-			logger.Sugar.Fatalf("failed to write chunk of file %s: %s", chunk.FileName, err)
+			logger.Sugar.Fatalf("failed to write chunk of file %s: %s", chunk.Msg, err)
 		}
 
-		fileName = chunk.FileName
+		fileName = chunk.Msg
 	}
 
 	fmt.Printf("file with UUID %s download successful! origin file name is %s\n", fileUUID, fileName)
