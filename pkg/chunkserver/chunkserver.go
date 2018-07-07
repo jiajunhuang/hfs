@@ -164,9 +164,12 @@ func (s *ChunkServer) CreateChunk(ctx context.Context, file *pb.FileChunkData) (
 	chunkUUID := file.Msg
 	chunkPath := config.ChunkBasePath + chunkUUID
 
-	if _, err := os.Stat(chunkPath); os.IsNotExist(err) {
-		return nil, ErrFileNotExist
+	f, err := files.Create(chunkPath)
+	if err != nil {
+		logger.Sugar.Errorf("failed to create chunk %s: %s", chunkPath, err)
+		return nil, ErrFailedWrite
 	}
+	f.Close()
 
 	if err := files.Append(chunkPath, bytes.NewReader(file.Data)); err != nil {
 		logger.Sugar.Errorf("failed to create chunk %s: %s", chunkUUID, err)
