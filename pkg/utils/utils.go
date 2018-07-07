@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/jiajunhuang/hfs/pb"
@@ -31,7 +32,7 @@ func GetChunkMeta(etcdClient *clientv3.Client, chunkUUID string) (*pb.Chunk, err
 		return nil, err
 	}
 
-	if len(resp.Kvs) != 1 {
+	if resp.Count != 1 {
 		logger.Sugar.Errorf("bad metadata of chunk %s: %+v", chunkUUID, resp)
 		return nil, ErrBadMetaData
 	}
@@ -54,7 +55,8 @@ func GetWorkersMeta(etcdClient *clientv3.Client) ([]string, error) {
 
 	workers := []string{}
 	for _, kv := range resp.Kvs {
-		workers = append(workers, string(kv.Value))
+		workerFullPath := strings.Split(string(kv.Key), "/")
+		workers = append(workers, workerFullPath[len(workerFullPath)-1])
 	}
 
 	return workers, nil
@@ -79,4 +81,19 @@ func GetFileMeta(etcdClient *clientv3.Client, fileUUID string) (*pb.File, error)
 	}
 
 	return &file, nil
+}
+
+func GetWorkerIP(etcdClient *clientv3.Client, workerName string) (string, error) {
+	resp, err := etcdClient.Get(context.Background(), config.WorkerBasePath+workerName)
+	if err != nil {
+		logger.Sugar.Errorf("failed to get metadata of worker %s: %s", workerName, err)
+		return "", err
+	}
+
+	if resp.Count != 1 {
+		logger.Sugar.Errorf("bad metadata of worker %s: %s", workerName, err)
+		return "", ErrBadMetaData
+	}
+
+	return string(resp.Kvs[0].Value), nil
 }

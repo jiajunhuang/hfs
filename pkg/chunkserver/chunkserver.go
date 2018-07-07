@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
@@ -267,11 +268,20 @@ func (s *ChunkServer) SyncChunk(chunkUUID string) {
 		return
 	}
 
-	syncTo := selection.Random(workers, s.ip, file.ReplicaNum)
+	syncTo := selection.Random(workers, s.name, file.ReplicaNum)
+	if len(syncTo) == 0 {
+		logger.Sugar.Warnf("do not find any scheduable node for chunk %s, so quit", chunkUUID)
+		return
+	}
 
 	succeed := []string{}
 	for _, node := range syncTo {
-		dialURL := node + ":8899"
+		nodeIP, err := utils.GetWorkerIP(s.etcdClient, node)
+		if err != nil {
+			logger.Sugar.Errorf("failed to get IP of worker %s: %s", node, err)
+			continue
+		}
+		dialURL := nodeIP + ":8899"
 		// get gRPC ready
 		conn, err := grpc.Dial(dialURL, grpc.WithInsecure(), grpc.WithMaxMsgSize(config.GRPCMaxMsgSize))
 		if err != nil {
@@ -286,6 +296,11 @@ func (s *ChunkServer) SyncChunk(chunkUUID string) {
 			logger.Sugar.Infof("chunk %s sync to node %s success!", chunkUUID, node)
 		}
 		succeed = append(succeed, node)
+	}
+
+	if len(succeed) < 1 {
+		logger.Sugar.Infof("chunk %s sync failed!", chunkUUID)
+		return
 	}
 
 	// TODO: sync metadata of chunk
@@ -311,7 +326,8 @@ func (s *ChunkServer) ChunkWatcher() {
 			switch ev.Type {
 			case mvccpb.PUT:
 				logger.Sugar.Infof("chunk %s added: %s, start to sync\n", ev.Kv.Key, ev.Kv.Value)
-				go s.SyncChunk(string(ev.Kv.Key))
+				chunkPaths := strings.Split(string(ev.Kv.Key), "/")
+				go s.SyncChunk(chunkPaths[len(chunkPaths)-1])
 			case mvccpb.DELETE:
 				logger.Sugar.Infof("chunk %s deleted: %s\n", ev.Kv.Key, ev.Kv.Value)
 			default:
