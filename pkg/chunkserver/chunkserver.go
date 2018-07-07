@@ -241,7 +241,7 @@ func (s *ChunkServer) KeepAlive() {
 		if err != nil {
 			logger.Sugar.Errorf("failed to put %s to %s: %s", s.name, s.addr, err)
 		} else {
-			logger.Sugar.Infof("refresh ip %s to worker %s in KV %+v", s.name, s.addr, kvClient)
+			logger.Sugar.Infof("refresh chunkserver %s to address %s in KV %+v", s.name, s.addr, kvClient)
 		}
 		time.Sleep(time.Second * 7)
 	}
@@ -304,7 +304,7 @@ func (s *ChunkServer) SyncChunk(chunkUUID string) {
 		return
 	}
 
-	// TODO: sync metadata of chunk
+	// TODO: reread metadata of chunk
 	// NOTE: here should start a transaction? for data safe
 	chunk.Replicas = append(chunk.Replicas, succeed...)
 	v, err := utils.ToJSONString(chunk)
