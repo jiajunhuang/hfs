@@ -12,12 +12,11 @@ func TestRandomSelection(t *testing.T) {
 		t.Fatalf("should not get any node return")
 	}
 
-	var result []string
-	result = Random(avalable, itself, 1)
-	if result[0] == itself {
-		t.Fatalf("should not select itself")
+	if len(Random(avalable, itself, 1)) != 0 {
+		t.Fatalf("should not get any node return")
 	}
 
+	var result []string
 	result = Random(avalable, itself, 2)
 	for _, r := range result {
 		if r == itself {

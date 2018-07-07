@@ -10,7 +10,7 @@ package selection provide chunk selection algorithms.
 
 // Random random select min(len(avalable), num) elems in avalable and return
 func Random(avalable []string, itself string, num int32) []string {
-	if num == 0 {
+	if num <= 1 {
 		return []string{}
 	}
 

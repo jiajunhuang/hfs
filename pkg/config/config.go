@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -18,6 +19,8 @@ var (
 	FileBasePath   = "/hfs/files/"
 	ChunkBasePath  = "/hfs/chunks/"
 	WorkerBasePath = "/hfs/workers/"
+
+	ReplicaNum = 3
 )
 
 // Config contains configurations, it will read from process environment, rewrite it with
@@ -43,5 +46,8 @@ func init() {
 	}
 	if v := os.Getenv("WorkerBasePath"); v != "" {
 		WorkerBasePath = v
+	}
+	if v := os.Getenv("ReplicaNum"); v != "" {
+		ReplicaNum, _ = strconv.Atoi(v)
 	}
 }

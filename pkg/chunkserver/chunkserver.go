@@ -42,7 +42,7 @@ func (s *ChunkServer) CreateFile(stream pb.ChunkServer_CreateFileServer) error {
 		UUID: uuid.New().String(),
 		// FileName
 		// Size
-		ReplicaNum: 1,
+		ReplicaNum: int32(config.ReplicaNum),
 		CreatedAt:  time.Now().Unix(),
 		UpdatedAt:  time.Now().Unix(),
 		// Chunks
