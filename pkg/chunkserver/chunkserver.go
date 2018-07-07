@@ -289,9 +289,10 @@ func (s *ChunkServer) SyncChunk(chunkUUID string) {
 		grpcClient := pb.NewChunkServerClient(conn)
 		if err := hfsclient.UploadChunk(grpcClient, chunkUUID); err != nil {
 			logger.Sugar.Errorf("failed to sync chunk %s to node %s: %s", chunkUUID, node, err)
-		} else {
-			logger.Sugar.Infof("chunk %s sync to node %s success!", chunkUUID, node)
+			continue
 		}
+
+		logger.Sugar.Infof("chunk %s sync to node %s success!", chunkUUID, node)
 		succeed = append(succeed, node)
 	}
 

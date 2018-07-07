@@ -94,12 +94,15 @@ func Delete(client pb.ChunkServerClient, fileUUID string) error {
 }
 
 func UploadChunk(client pb.ChunkServerClient, chunkUUID string) error {
-	data, err := ioutil.ReadFile(config.ChunkBasePath + chunkUUID)
+	chunkPath := config.ChunkBasePath + chunkUUID
+	data, err := ioutil.ReadFile(chunkPath)
 	if err != nil {
+		logger.Sugar.Errorf("failed to read chunk %s: %s", chunkPath, err)
 		return err
 	}
 
 	if _, err := client.CreateChunk(context.Background(), &pb.FileChunkData{Data: data, Msg: chunkUUID}); err != nil {
+		logger.Sugar.Errorf("failed to sync chunk %s: %s", chunkUUID, err)
 		return err
 
 	}
