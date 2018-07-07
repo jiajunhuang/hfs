@@ -11,11 +11,14 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/google/uuid"
 	"github.com/jiajunhuang/hfs/pb"
 	"github.com/jiajunhuang/hfs/pkg/config"
 	"github.com/jiajunhuang/hfs/pkg/files"
+	"github.com/jiajunhuang/hfs/pkg/hfsclient"
 	"github.com/jiajunhuang/hfs/pkg/logger"
+	"github.com/jiajunhuang/hfs/pkg/selection"
 	"github.com/jiajunhuang/hfs/pkg/utils"
 	"google.golang.org/grpc"
 )
@@ -130,12 +133,23 @@ func (s *ChunkServer) RemoveFile(ctx context.Context, file *pb.File) (*pb.Generi
 	chunks := file.Chunks
 
 	for _, c := range chunks {
-		chunkPath := config.ChunkBasePath + c.UUID
-		if err := files.Remove(chunkPath); err != nil {
-			logger.Sugar.Errorf("failed to remove chunk %s: %s", c.UUID, err)
-		}
-		if _, err := kvClient.Delete(context.Background(), chunkPath); err != nil {
-			logger.Sugar.Errorf("failed to delete metadata of chunk %s: %s", c.UUID, err)
+		// remove all replicas of chunk
+		for _, node := range c.Replicas {
+			dialURL := node + ":8899"
+			// get gRPC ready
+			conn, err := grpc.Dial(dialURL, grpc.WithInsecure(), grpc.WithMaxMsgSize(config.GRPCMaxMsgSize))
+			if err != nil {
+				logger.Sugar.Fatalf("failed to connect to grpc server %s: %s", config.GRPCAddr, err)
+			}
+			defer conn.Close()
+
+			grpcClient := pb.NewChunkServerClient(conn)
+			chunkUUID := c.UUID
+			if err := hfsclient.Delete(grpcClient, chunkUUID); err != nil {
+				logger.Sugar.Errorf("failed to delete chunk %s of node %s", chunkUUID, node)
+			} else {
+				logger.Sugar.Infof("chunk %s of node %s delete success!", chunkUUID, node)
+			}
 		}
 	}
 
@@ -231,12 +245,78 @@ func (s *ChunkServer) KeepAlive() {
 	}
 }
 
+func (s *ChunkServer) SyncChunk(chunkUUID string) {
+	// get metadata of chunk
+	chunk, err := utils.GetChunkMeta(s.etcdClient, chunkUUID)
+	if err != nil {
+		logger.Sugar.Errorf("failed to sync chunk %s: %s", chunkUUID, err)
+		return
+	}
+
+	// get metadata of file
+	file, err := utils.GetFileMeta(s.etcdClient, chunk.FileUUID)
+	if err != nil {
+		logger.Sugar.Errorf("failed to sync chunk %s: %s", chunkUUID, err)
+		return
+	}
+
+	// get workers
+	workers, err := utils.GetWorkersMeta(s.etcdClient)
+	if err != nil {
+		logger.Sugar.Errorf("failed to sync chunk %s: %s", chunkUUID, err)
+		return
+	}
+
+	syncTo := selection.Random(workers, s.ip, file.ReplicaNum)
+
+	succeed := []string{}
+	for _, node := range syncTo {
+		dialURL := node + ":8899"
+		// get gRPC ready
+		conn, err := grpc.Dial(dialURL, grpc.WithInsecure(), grpc.WithMaxMsgSize(config.GRPCMaxMsgSize))
+		if err != nil {
+			logger.Sugar.Fatalf("failed to connect to grpc server %s: %s", config.GRPCAddr, err)
+		}
+		defer conn.Close()
+
+		grpcClient := pb.NewChunkServerClient(conn)
+		if err := hfsclient.Upload(grpcClient, config.ChunkBasePath+chunkUUID); err != nil {
+			logger.Sugar.Errorf("failed to sync chunk %s to node %s", chunkUUID, node)
+		} else {
+			logger.Sugar.Infof("chunk %s sync to node %s success!", chunkUUID, node)
+		}
+		succeed = append(succeed, node)
+	}
+
+	// TODO: sync metadata of chunk
+	// NOTE: here should start a transaction? for data safe
+	chunk.Replicas = append(chunk.Replicas, succeed...)
+	v, err := utils.ToJSONString(chunk)
+	if err != nil {
+		logger.Sugar.Fatalf("failed to save metadata of chunk %s: %s", chunkUUID, err)
+	}
+	_, err = s.etcdClient.Put(context.Background(), config.ChunkBasePath+chunkUUID, v)
+	if err != nil {
+		logger.Sugar.Fatalf("failed to save metadata of chunk %s: %s", chunkUUID, err)
+	}
+
+	logger.Sugar.Infof("metadata of chunk %s updated!", chunkUUID)
+}
+
 func (s *ChunkServer) ChunkWatcher() {
 	chunkChan := s.etcdClient.Watch(context.Background(), config.ChunkBasePath, clientv3.WithPrefix())
 
 	for resp := range chunkChan {
 		for _, ev := range resp.Events {
-			logger.Sugar.Infof("watcher: %s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			switch ev.Type {
+			case mvccpb.PUT:
+				logger.Sugar.Infof("chunk %s added: %s, start to sync\n", ev.Kv.Key, ev.Kv.Value)
+				go s.SyncChunk(string(ev.Kv.Key))
+			case mvccpb.DELETE:
+				logger.Sugar.Infof("chunk %s deleted: %s\n", ev.Kv.Key, ev.Kv.Value)
+			default:
+				logger.Sugar.Fatalf("watcher: should not be here")
+			}
 		}
 	}
 }
@@ -258,6 +338,7 @@ func StartChunkServer() {
 
 	chunkServer := ChunkServer{config.ChunkServerName, config.ChunkServerIPAddr, etcdClient}
 	go chunkServer.KeepAlive()
+	go chunkServer.ChunkWatcher()
 
 	// grpc server
 	lis, err := net.Listen("tcp", config.GRPCAddr)
