@@ -7,6 +7,10 @@ Huang's Distributed File System.
 
 My toy.
 
+TODO:
+
+- [ ] concurrently download file
+
 ## Make it works
 
 0. install and start etcd:
