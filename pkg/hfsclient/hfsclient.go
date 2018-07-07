@@ -46,6 +46,8 @@ func Upload(client pb.ChunkServerClient, filePath string) error {
 	return nil
 }
 
+// FIXME: Download should be rewrite because chunks of file may be distributed in
+// diffrent nodes in cluster
 func Download(client pb.ChunkServerClient, fileUUID string) error {
 	fileName := ""
 
