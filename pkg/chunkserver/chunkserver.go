@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
@@ -34,7 +33,7 @@ var (
 
 type ChunkServer struct {
 	name       string
-	ip         string
+	addr       string
 	etcdClient *clientv3.Client
 }
 
@@ -135,8 +134,7 @@ func (s *ChunkServer) RemoveFile(ctx context.Context, file *pb.File) (*pb.Generi
 
 	for _, c := range chunks {
 		// remove all replicas of chunk
-		for _, node := range c.Replicas {
-			dialURL := node + ":8899"
+		for _, dialURL := range c.Replicas {
 			// get gRPC ready
 			conn, err := grpc.Dial(dialURL, grpc.WithInsecure(), grpc.WithMaxMsgSize(config.GRPCMaxMsgSize))
 			if err != nil {
@@ -147,9 +145,9 @@ func (s *ChunkServer) RemoveFile(ctx context.Context, file *pb.File) (*pb.Generi
 			grpcClient := pb.NewChunkServerClient(conn)
 			chunkUUID := c.UUID
 			if err := hfsclient.Delete(grpcClient, chunkUUID); err != nil {
-				logger.Sugar.Errorf("failed to delete chunk %s of node %s", chunkUUID, node)
+				logger.Sugar.Errorf("failed to delete chunk %s of node %s", chunkUUID, dialURL)
 			} else {
-				logger.Sugar.Infof("chunk %s of node %s delete success!", chunkUUID, node)
+				logger.Sugar.Infof("chunk %s of node %s delete success!", chunkUUID, dialURL)
 			}
 		}
 	}
@@ -236,11 +234,11 @@ func (s *ChunkServer) KeepAlive() {
 			logger.Sugar.Errorf("failed to grant lease: %s", err)
 			continue
 		}
-		_, err = kvClient.Put(context.Background(), config.WorkerBasePath+s.name, s.ip, clientv3.WithLease(grantResp.ID))
+		_, err = kvClient.Put(context.Background(), config.WorkerBasePath+s.name, s.addr, clientv3.WithLease(grantResp.ID))
 		if err != nil {
-			logger.Sugar.Errorf("failed to put %s to %s: %s", s.name, s.ip, err)
+			logger.Sugar.Errorf("failed to put %s to %s: %s", s.name, s.addr, err)
 		} else {
-			logger.Sugar.Infof("refresh ip %s to worker %s in KV %+v", s.name, s.ip, kvClient)
+			logger.Sugar.Infof("refresh ip %s to worker %s in KV %+v", s.name, s.addr, kvClient)
 		}
 		time.Sleep(time.Second * 7)
 	}
@@ -276,12 +274,11 @@ func (s *ChunkServer) SyncChunk(chunkUUID string) {
 
 	succeed := []string{}
 	for _, node := range syncTo {
-		nodeIP, err := utils.GetWorkerIP(s.etcdClient, node)
+		dialURL, err := utils.GetWorkerAddr(s.etcdClient, node)
 		if err != nil {
 			logger.Sugar.Errorf("failed to get IP of worker %s: %s", node, err)
 			continue
 		}
-		dialURL := nodeIP + ":8899"
 		// get gRPC ready
 		conn, err := grpc.Dial(dialURL, grpc.WithInsecure(), grpc.WithMaxMsgSize(config.GRPCMaxMsgSize))
 		if err != nil {
@@ -290,8 +287,8 @@ func (s *ChunkServer) SyncChunk(chunkUUID string) {
 		defer conn.Close()
 
 		grpcClient := pb.NewChunkServerClient(conn)
-		if err := hfsclient.Upload(grpcClient, config.ChunkBasePath+chunkUUID); err != nil {
-			logger.Sugar.Errorf("failed to sync chunk %s to node %s", chunkUUID, node)
+		if err := hfsclient.UploadChunk(grpcClient, chunkUUID); err != nil {
+			logger.Sugar.Errorf("failed to sync chunk %s to node %s: %s", chunkUUID, node, err)
 		} else {
 			logger.Sugar.Infof("chunk %s sync to node %s success!", chunkUUID, node)
 		}
@@ -326,8 +323,22 @@ func (s *ChunkServer) ChunkWatcher() {
 			switch ev.Type {
 			case mvccpb.PUT:
 				logger.Sugar.Infof("chunk %s added: %s, start to sync\n", ev.Kv.Key, ev.Kv.Value)
-				chunkPaths := strings.Split(string(ev.Kv.Key), "/")
-				go s.SyncChunk(chunkPaths[len(chunkPaths)-1])
+				chunk := pb.Chunk{}
+				if err := json.Unmarshal(ev.Kv.Value, &chunk); err != nil {
+					logger.Sugar.Errorf("failed to unmarshal chunk %s: %s", ev.Kv.Key, err)
+					continue
+				}
+
+				if len(chunk.Replicas) != 1 {
+					logger.Sugar.Warnf("chunk.Replicas: %s is more than 1, %s will not responsible for sync it", chunk.Replicas, s.name)
+					continue
+				} else {
+					if chunk.Replicas[0] != s.name {
+						logger.Sugar.Infof("chunk %s is not created at %s, so it will not responsible for sync it", chunk.UUID, s.name)
+					} else {
+						go s.SyncChunk(chunk.UUID)
+					}
+				}
 			case mvccpb.DELETE:
 				logger.Sugar.Infof("chunk %s deleted: %s\n", ev.Kv.Key, ev.Kv.Value)
 			default:
@@ -352,7 +363,7 @@ func StartChunkServer() {
 
 	defer etcdClient.Close()
 
-	chunkServer := ChunkServer{config.ChunkServerName, config.ChunkServerIPAddr, etcdClient}
+	chunkServer := ChunkServer{config.ChunkServerName, config.ChunkServerAddr, etcdClient}
 	go chunkServer.KeepAlive()
 	go chunkServer.ChunkWatcher()
 

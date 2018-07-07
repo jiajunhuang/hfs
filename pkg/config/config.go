@@ -7,11 +7,11 @@ import (
 
 // configurations
 var (
-	GRPCAddr          = "127.0.0.1:8899"
-	ChunkServerName   = "hfs-chunk"
-	ChunkServerIPAddr = "127.0.0.1"
-	ChunkSize         = 1024 * 1024 * 64 // 64M
-	GRPCMaxMsgSize    = ChunkSize + 4096 // 64M + 4K
+	GRPCAddr        = "127.0.0.1:8899"
+	ChunkServerName = "hfs-chunk"
+	ChunkServerAddr = "127.0.0.1:8899"
+	ChunkSize       = 1024 * 1024 * 64 // 64M
+	GRPCMaxMsgSize  = ChunkSize + 4096 // 64M + 4K
 
 	EtcdEndpoints = []string{"127.0.0.1:2379"}
 
@@ -29,8 +29,8 @@ func init() {
 	if v := os.Getenv("ChunkServerName"); v != "" {
 		ChunkServerName = v
 	}
-	if v := os.Getenv("ChunkServerIPAddr"); v != "" {
-		ChunkServerIPAddr = v
+	if v := os.Getenv("ChunkServerAddr"); v != "" {
+		ChunkServerAddr = v
 	}
 	if v := os.Getenv("EtcdEndpoints"); v != "" {
 		EtcdEndpoints = strings.Split(v, ",")

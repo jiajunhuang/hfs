@@ -71,7 +71,7 @@ func GetFileMeta(etcdClient *clientv3.Client, fileUUID string) (*pb.File, error)
 
 	if len(resp.Kvs) != 1 {
 		logger.Sugar.Errorf("bad metadata of file %s: %s", fileUUID, resp.Kvs)
-		return nil, err
+		return nil, ErrBadMetaData
 	}
 
 	file := pb.File{}
@@ -83,7 +83,7 @@ func GetFileMeta(etcdClient *clientv3.Client, fileUUID string) (*pb.File, error)
 	return &file, nil
 }
 
-func GetWorkerIP(etcdClient *clientv3.Client, workerName string) (string, error) {
+func GetWorkerAddr(etcdClient *clientv3.Client, workerName string) (string, error) {
 	resp, err := etcdClient.Get(context.Background(), config.WorkerBasePath+workerName)
 	if err != nil {
 		logger.Sugar.Errorf("failed to get metadata of worker %s: %s", workerName, err)

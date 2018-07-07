@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -87,6 +88,20 @@ func Delete(client pb.ChunkServerClient, fileUUID string) error {
 	if _, err := client.RemoveFile(context.Background(), &file); err != nil {
 		fmt.Printf("failed to delete file %s: %s\n", file.UUID, err)
 		return err
+	}
+
+	return nil
+}
+
+func UploadChunk(client pb.ChunkServerClient, chunkUUID string) error {
+	data, err := ioutil.ReadFile(config.ChunkBasePath + chunkUUID)
+	if err != nil {
+		return err
+	}
+
+	if _, err := client.CreateChunk(context.Background(), &pb.FileChunkData{Data: data, Msg: chunkUUID}); err != nil {
+		return err
+
 	}
 
 	return nil
