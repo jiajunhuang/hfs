@@ -3,11 +3,16 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/jiajunhuang/hfs/pb"
 	"github.com/jiajunhuang/hfs/pkg/config"
 	"github.com/jiajunhuang/hfs/pkg/logger"
+)
+
+var (
+	ErrBadMetaData = errors.New("bad metadata")
 )
 
 func ToJSONString(c interface{}) (string, error) {
@@ -27,8 +32,8 @@ func GetChunkMeta(etcdClient *clientv3.Client, chunkUUID string) (*pb.Chunk, err
 	}
 
 	if len(resp.Kvs) != 1 {
-		logger.Sugar.Errorf("bad metadata of chunk %s: %s", chunkUUID, resp.Kvs)
-		return nil, err
+		logger.Sugar.Errorf("bad metadata of chunk %s: %+v", chunkUUID, resp)
+		return nil, ErrBadMetaData
 	}
 
 	chunk := pb.Chunk{}
